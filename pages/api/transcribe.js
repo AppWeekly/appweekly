@@ -7,6 +7,16 @@ import { URL } from 'url';
 import path from 'path';
 import os from 'os';
 
+const { 
+  NEXT_PUBLIC_OPENAI_API_KEY,
+  NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY 
+} = process.env
+
+const openai = new OpenAIApi(new Configuration({
+  apiKey: NEXT_PUBLIC_OPENAI_API_KEY,
+}));
+
+// Support for local (mac) & production (linux)
 let ffmpegPath;
 if (os.type() === 'Linux') {
   ffmpegPath = path.join(process.cwd(), 'bin', 'ffmpeg');
@@ -17,14 +27,9 @@ if (os.type() === 'Linux') {
 }
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-const configuration = new Configuration({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
-
 async function googleDriveVideoDownload(fileId) {
   try {
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY}`;
     const response = await axios.get(downloadUrl, { responseType: 'stream' });
 
     if (response.status !== 200) {
