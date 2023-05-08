@@ -92,10 +92,10 @@ async function downloadVideo(url) {
 }
 
 async function transcribeAudio(audioFile) {
+  // const url = 'https://api.openai.com/v1/audio/transcriptions';
   const fileData = fs.createReadStream(audioFile);
-
   try {
-    const response = await openai.createTranscription(fileData, "whisper-1");
+    const response = await openai.createTranscription(fileData, 'whisper-1');
 
     if (response.status !== 200) {
       console.error(`Failed to transcribe the audio, status code: ${response.status}`);
@@ -141,8 +141,19 @@ export default async function handler(req, res) {
     return;
   }
 
+  const stats = await fs.promises.stat(videoPath);
+  const fileSizeInBytes = stats.size;
+  const fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024);
+  console.log(`Video file size: ${fileSizeInMegabytes} MB`);
+
   try {
     const audioOutput = await processAudio(videoPath);
+
+    const stats = await fs.promises.stat(audioOutput);
+    const fileSizeInBytes = stats.size;
+    const fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024);
+    console.log(`Audio file size: ${fileSizeInMegabytes} MB`);
+
     await fs.promises.unlink(videoPath);
 
     // Transcribe the audio using Whisper ASR API
