@@ -109,22 +109,51 @@ async function transcribeAudio(audioFile) {
   }
 }
 
-async function processAudio(videoPath) {
+async function getAudioDurationInSeconds(videoPath) {
   return new Promise((resolve, reject) => {
-    const audioOutput = tempfile({ extension: '.mp3' });
-    ffmpeg(videoPath)
-      .noVideo()
-      .audioCodec('libmp3lame')
-      .output(audioOutput)
-      .on('end', async () => {
-        resolve(audioOutput);
-      })
-      .on('error', (err) => {
-        console.error(`An error occurred: ${err.message}`);
+    ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      if (err) {
         reject(err);
-      })
-      .run();
+      } else {
+        resolve(metadata.format.duration);
+      }
+    });
   });
+}
+
+async function processAudio(videoPath) {
+  const duration = await getAudioDurationInSeconds(videoPath);
+  const blockDuration = 10 * 60; // 10 minutes in seconds
+  const numBlocks = Math.ceil(duration / blockDuration);
+
+  let transcription = '';
+  for (let i = 0; i < numBlocks; i++) {
+    const startTime = i * blockDuration;
+    const endTime = Math.min((i + 1) * blockDuration, duration);
+    const outputFile = tempfile({ extension: '.mp3' });
+
+    await new Promise((resolve, reject) => {
+      ffmpeg(videoPath)
+        .setStartTime(startTime)
+        .setDuration(endTime - startTime)
+        .noVideo()
+        .audioCodec('libmp3lame')
+        .output(outputFile)
+        .on('end', async () => {
+          const chunkTranscription = await transcribeAudio(outputFile);
+          transcription += chunkTranscription + ' ';
+          await fs.promises.unlink(outputFile);
+          resolve();
+        })
+        .on('error', (err) => {
+          console.error(`An error occurred: ${err.message}`);
+          reject(err);
+        })
+        .run();
+    });
+  }
+
+  return transcription;
 }
 
 export default async function handler(req, res) {
@@ -147,19 +176,10 @@ export default async function handler(req, res) {
   console.log(`Video file size: ${fileSizeInMegabytes} MB`);
 
   try {
-    const audioOutput = await processAudio(videoPath);
-
-    const stats = await fs.promises.stat(audioOutput);
-    const fileSizeInBytes = stats.size;
-    const fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024);
-    console.log(`Audio file size: ${fileSizeInMegabytes} MB`);
+    // Process the audio in 10-minute chunks and transcribe each chunk
+    const transcription = await processAudio(videoPath);
 
     await fs.promises.unlink(videoPath);
-
-    // Transcribe the audio using Whisper ASR API
-    const transcription = await transcribeAudio(audioOutput);
-
-    await fs.promises.unlink(audioOutput);
 
     res.status(200).json({ transcription });
   } catch (error) {
