@@ -92,7 +92,6 @@ async function downloadVideo(url) {
 }
 
 async function transcribeAudio(audioFile) {
-  // const url = 'https://api.openai.com/v1/audio/transcriptions';
   const fileData = fs.createReadStream(audioFile);
   try {
     const response = await openai.createTranscription(fileData, 'whisper-1');
@@ -156,6 +155,29 @@ async function processAudio(videoPath) {
   return transcription;
 }
 
+async function getMemo(transcription) {
+  try {
+    const prompt = `Please analyze and summarize the following meeting transcription. Include memo extractions, main action points, numerical data or points, decisions, and suggestions for improving the meeting next time:\n\n${transcription}\n\nAnalysis:`;
+
+    const response = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [{role: "user", content: prompt}],
+    });
+
+    if (response.status !== 200) {
+      console.error(`Failed to generate summary, status code: ${response.status}`);
+      return null;
+    }
+
+    console.log('res', response)
+
+    return response.data.choices[0].message.content;
+  } catch (error) {
+    console.error(`An error occurred: ${error}`);
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   const videoUrl = req.query.videoUrl;
 
@@ -176,12 +198,16 @@ export default async function handler(req, res) {
   console.log(`Video file size: ${fileSizeInMegabytes} MB`);
 
   try {
-    // Process the audio in 10-minute chunks and transcribe each chunk
+    // Process the audio in 10-minute chunks and transcribe each chunk as whisper has limitation of 25MB per audio file
     const transcription = await processAudio(videoPath);
+
+    console.log('length', transcription.length)
+    // Get the summary using OpenAI Chat Completion API
+    const memo = await getMemo(transcription);
 
     await fs.promises.unlink(videoPath);
 
-    res.status(200).json({ transcription });
+    res.status(200).json({ memo });
   } catch (error) {
     console.error(`An error occurred: ${error}`);
     res.status(500).json({ error: "An error occurred during audio processing" });
