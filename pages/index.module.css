@@ -17,11 +17,14 @@
 .appIcon {
   width: 80px;
   height: 80px;
-  background-color: #ccc; /* Change the background color or add a background image for the app icon */
-  border-radius: 20px; /* Adjust the border-radius for roundness */
+  border-radius: 20px;
   display: flex;
   justify-content: center;
   align-items: center;
+  background-color: #ccc;
+  background-image: url('../public/img/app1.png');
+  background-size: cover;
+  background-position: center;
 }
 
 .appName {

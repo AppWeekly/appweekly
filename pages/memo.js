@@ -2,9 +2,14 @@ import React from 'react';
 import {
   Page,
   Navbar,
-  Link,
+  NavbarBackLink,
   Block,
   Button,
+  BlockTitle,
+  BlockHeader,
+  List,
+  ListInput,
+  ListButton
 } from 'konsta/react';
 import styles from './index.module.css';
 import useAuth from "../useAuth";
@@ -20,14 +25,6 @@ export default function Home() {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error during Google sign-in:', error);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Error during logout:', error);
     }
   };
 
@@ -58,20 +55,21 @@ export default function Home() {
   return (
     <Page>
       <Navbar
-        title="AppWeekly"
-        subtitle="v0.1.0"
+        title="Memo"
         className="top-0 sticky"
-        right={<Link navbar onClick={handleLogout}>Logout</Link>}
+        left={
+          <NavbarBackLink text="Back" onClick={() => history.back()} />
+        }
       />
 
-      <div className={styles.appContainer}>
-        <Link href="/memo" className={styles.app}>
-          <div className={styles.appIcon}></div>
-          <div className={styles.appName}>
-            Memo
-          </div>
-        </Link>
-      </div>
+      <BlockTitle>AI Generate Memo for your meetings</BlockTitle>
+        <BlockHeader>
+          Medium and Large will collapse to usual size on page scroll
+        </BlockHeader>
+        <List strong inset>
+          <ListInput label="Video URL" type="url" placeholder="URL" />
+          <ListButton>Generate</ListButton>
+        </List>
     </Page>
   );
 }
