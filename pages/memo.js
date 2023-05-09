@@ -10,6 +10,7 @@ import {
   ListInput,
   ListButton,
   Preloader,
+  Link,
   f7,
   Button
 } from 'konsta/react';
@@ -57,9 +58,11 @@ export default function Home() {
           />
           <div className={styles.loginContainer}>
             <Block strong className="space-y-4">
+            <p>Welcome to AppWeekly!</p>
               <p>
-                Welcome to AppWeekly! Please log-in to continue.
+              This is an extension of my journey enabling us all to capture and utilize our best thoughts whenever inspiration strikes. Whether it's harnessing the power of AI or innovating other everyday tasks, I'm eager to learn, grow, and create alongside you. If you want to know more, be sure to subscribe to my <Link href="https://www.youtube.com/@AppWeeklyOfficial">YouTube channel</Link>.
               </p>
+              <p>Let's begin this exciting journey together! ❤️</p>
               <p>
                 <Button large onClick={handleGoogleSignIn}>Sign in with Google</Button>
               </p>
@@ -80,9 +83,9 @@ export default function Home() {
         }
       />
 
-      <BlockTitle>AI Generate Memo for your meetings</BlockTitle>
+      <BlockTitle>AI-Powered Meeting Memo</BlockTitle>
         <BlockHeader>
-          Medium and Large will collapse to usual size on page scroll
+        Tired of manually summarizing your lengthy meetings? Simply provide the URL of your recorded video meeting, and AI will generate a comprehensive summary for you. Not just that, the AI extracts key points, conclusions, decisions, and even offers suggestions for improving your future meetings. Once the memo is generated, you can easily copy it to your clipboard with a single click.
         </BlockHeader>
         <List strong inset>
           <ListInput 
@@ -101,7 +104,7 @@ export default function Home() {
           <Block strong className="space-y-4">
             <p>{memo}</p>
             <CopyToClipboard text={memo}>
-              <Button>Copy to Clipboard</Button>
+              <Button large>Copy to Clipboard</Button>
             </CopyToClipboard>
           </Block>
         )}
