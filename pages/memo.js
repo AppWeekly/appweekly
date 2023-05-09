@@ -1,23 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Page,
   Navbar,
   NavbarBackLink,
   Block,
-  Button,
   BlockTitle,
   BlockHeader,
   List,
   ListInput,
-  ListButton
+  ListButton,
+  Preloader,
+  f7,
+  Button
 } from 'konsta/react';
 import styles from './index.module.css';
 import useAuth from "../useAuth";
-import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../firebase';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 export default function Home() {
   const user = useAuth();
+  const [videoUrl, setVideoUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [memo, setMemo] = useState(null);
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
@@ -26,6 +32,18 @@ export default function Home() {
     } catch (error) {
       console.error('Error during Google sign-in:', error);
     }
+  };
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/transcribe?videoUrl=${encodeURIComponent(videoUrl)}`);
+      const data = await res.json();
+      setMemo(data.memo);
+    } catch (error) {
+      f7.dialog.alert('An error occurred: ' + error.message);
+    }
+    setLoading(false);
   };
 
   if (!user) {
@@ -67,9 +85,26 @@ export default function Home() {
           Medium and Large will collapse to usual size on page scroll
         </BlockHeader>
         <List strong inset>
-          <ListInput label="Video URL" type="url" placeholder="URL" />
-          <ListButton>Generate</ListButton>
+          <ListInput 
+            label="Video URL" 
+            type="url" 
+            placeholder="URL" 
+            value={videoUrl} 
+            onInput={(e) => setVideoUrl(e.target.value)}
+          />
+          <ListButton onClick={handleGenerate}>
+            {loading ? <Preloader /> : 'Generate'}
+          </ListButton>
         </List>
+
+        {memo && (
+          <Block strong className="space-y-4">
+            <p>{memo}</p>
+            <CopyToClipboard text={memo}>
+              <Button>Copy to Clipboard</Button>
+            </CopyToClipboard>
+          </Block>
+        )}
     </Page>
   );
 }

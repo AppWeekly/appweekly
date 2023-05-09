@@ -169,8 +169,6 @@ async function getMemo(transcription) {
       return null;
     }
 
-    console.log('res', response)
-
     return response.data.choices[0].message.content;
   } catch (error) {
     console.error(`An error occurred: ${error}`);
@@ -201,7 +199,6 @@ export default async function handler(req, res) {
     // Process the audio in 10-minute chunks and transcribe each chunk as whisper has limitation of 25MB per audio file
     const transcription = await processAudio(videoPath);
 
-    console.log('length', transcription.length)
     // Get the summary using OpenAI Chat Completion API
     const memo = await getMemo(transcription);
 
