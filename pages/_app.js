@@ -1,7 +1,9 @@
 import { App } from 'konsta/react';
 import {
   Page,
-  Navbar
+  Block,
+  Navbar,
+  Preloader, // Import the Preloader component
 } from 'konsta/react';
 import styles from '../styles/index.module.css';
 import '../styles/globals.css';
@@ -10,12 +12,31 @@ import { AuthProvider } from '../contexts/AuthContext';
 import SignIn from '../components/SignIn';
 
 function MyApp({ Component, pageProps }) {
-  const user = useAuth();
+  const { user, loading } = useAuth(); // Destructure loading from useAuth
 
-  if (!user) {
+  if (loading) {
     return (
       <App theme="ios">
-        <AuthProvider>
+        <Page>
+          <Navbar
+            title="AppWeekly"
+            subtitle="loading.."
+            className="top-0 sticky"
+          />
+          <Block strong className="text-center">
+            <div className="text-center">
+              <Preloader size="w-12 h-12" />
+            </div>
+          </Block>
+        </Page>
+      </App>
+    );
+  }
+
+  return (
+    <AuthProvider>
+      <App theme="ios">
+        {!user ? (
           <div className={styles.loginPage}>
             <Page>
               <Navbar
@@ -26,18 +47,11 @@ function MyApp({ Component, pageProps }) {
               <SignIn />
             </Page>
           </div>
-        </AuthProvider>
+        ) : (
+          <Component {...pageProps} />
+        )}
       </App>
-    );
-  }
-
-  return (
-    // Wrap our app with App component
-    <App theme="ios">
-      <AuthProvider>
-        <Component {...pageProps} />
-      </AuthProvider>
-    </App>
+    </AuthProvider>
   );
 }
 

@@ -2,18 +2,19 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 
-const useAuth = () => {
+export default function useAuth() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // Add a loading state
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      authUser ? setUser(authUser) : setUser(null);
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      setUser(user);
+      setLoading(false); // Loading is finished once we get the user data
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
-  return user;
-};
-
-export default useAuth;
+  return { user, loading }; // Return the loading state
+}

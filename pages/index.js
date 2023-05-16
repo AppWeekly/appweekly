@@ -13,8 +13,7 @@ export default function Home() {
 
   // Array of your app objects. Can be moved to a separate data file and imported.
   const apps = [
-    { href: '/memo', name: 'Memo' },
-    // { href: '/link-to-new-app', name: 'New App' },
+    { href: '/memo', name: 'Memo', imgSrc: 'img/memo.png' },
   ];
 
   return (
@@ -28,7 +27,7 @@ export default function Home() {
 
       <div className={styles.appContainer}>
         {apps.map((app, index) => (
-          <AppLink key={index} href={app.href} appName={app.name} />
+          <AppLink key={index} href={app.href} appName={app.name} imgSrc={app.imgSrc} />
         ))}
       </div>
     </Page>
