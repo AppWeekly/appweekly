@@ -42,11 +42,8 @@ export default function Home() {
           />
           <div className={styles.loginContainer}>
             <Block strong className="space-y-4">
-              <p>Welcome to AppWeekly!</p>
               <p>
-              This is an extension of my journey enabling us all to capture and utilize our best thoughts whenever inspiration strikes. Whether it&rsquo;s harnessing the power of AI or innovating other everyday tasks, I&rsquo;m eager to learn, grow, and create alongside you. If you want to know more, be sure to subscribe to my <Link href="https://www.youtube.com/@AppWeeklyOfficial">YouTube channel</Link>.
-              </p>
-              <p>Let&rsquo;s begin this exciting journey together! &#10084;&#65039;</p>
+               Explore the world of ideas and creative solutions to daily challenges. To follow this journey, check out the <Link href="https://www.youtube.com/@AppWeeklyOfficial">YouTube</Link> channel. Free, so please use responsibly.</p>
               <p>
                 <Button large onClick={handleGoogleSignIn}>Sign in with Google</Button>
               </p>
