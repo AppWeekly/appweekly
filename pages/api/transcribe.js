@@ -8,12 +8,12 @@ import path from 'path';
 import os from 'os';
 
 const { 
-  NEXT_PUBLIC_OPENAI_API_KEY,
-  NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY 
+  APP_OPENAI_API_KEY,
+  APP_GOOGLE_DRIVE_API_KEY 
 } = process.env
 
 const openai = new OpenAIApi(new Configuration({
-  apiKey: NEXT_PUBLIC_OPENAI_API_KEY,
+  apiKey: APP_OPENAI_API_KEY,
 }));
 
 // Support for local (mac) & production (linux)
@@ -29,7 +29,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 async function googleDriveVideoDownload(fileId) {
   try {
-    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY}`;
+    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${APP_GOOGLE_DRIVE_API_KEY}`;
     const response = await axios.get(downloadUrl, { responseType: 'stream' });
 
     if (response.status !== 200) {

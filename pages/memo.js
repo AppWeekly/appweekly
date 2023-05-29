@@ -15,7 +15,7 @@ import {
 } from 'konsta/react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
-export default function Home() {
+export default function Memo() {
   const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [memo, setMemo] = useState(null);
