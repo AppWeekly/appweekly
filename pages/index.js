@@ -14,6 +14,7 @@ export default function Home() {
   // Array of your app objects. Can be moved to a separate data file and imported.
   const apps = [
     { href: '/memo', name: 'Memo', imgSrc: 'img/memo.png' },
+    { href: '/narrator', name: 'Narrator', imgSrc: 'img/narrator.png' },
   ];
 
   return (

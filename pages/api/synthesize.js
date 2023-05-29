@@ -1,7 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import tempfile from 'tempfile';
 import { Configuration, OpenAIApi } from 'openai';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import fetch from 'node-fetch';
 import axios from 'axios';
@@ -10,24 +10,24 @@ import os from 'os';
 import fs from 'fs';
 
 const { 
-  OPENAI_API_KEY,
-  PLAYHT_USER_ID,
-  PLAYHT_SECRET_KEY,
-  AWS_REGION,
-  AWS_ACCESS_KEY,
-  AWS_SECRET_ACCESS_KEY,
-  AWS_BUCKET_NAME,
+  APP_OPENAI_API_KEY,
+  APP_PLAYHT_USER_ID,
+  APP_PLAYHT_SECRET_KEY,
+  APP_AWS_REGION,
+  APP_AWS_ACCESS_KEY,
+  APP_AWS_SECRET_ACCESS_KEY,
+  APP_AWS_BUCKET_NAME,
 } = process.env
 
 const openai = new OpenAIApi(new Configuration({
-  apiKey: OPENAI_API_KEY,
+  apiKey: APP_OPENAI_API_KEY,
 }));
 
 const s3Client = new S3Client({ 
-  region: AWS_REGION,
+  region: APP_AWS_REGION,
   credentials: {
-    accessKeyId: AWS_ACCESS_KEY,
-    secretAccessKey: AWS_SECRET_ACCESS_KEY
+    accessKeyId: APP_AWS_ACCESS_KEY,
+    secretAccessKey: APP_AWS_SECRET_ACCESS_KEY
   }
 });
 
@@ -43,12 +43,12 @@ if (os.type() === 'Linux') {
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 async function getImagePrompt(text) {
-  const prompt = `Given the following text, create a succinct summary that could be used as description of a popular painting: ${text}`
+  const prompt = `Take the following text and provide a condensed, yet comprehensive summary that encapsulates the key idea in just a 5-10 words and reads like a description of a painting. Include "oil painting" in the text. ${text}`
 
   const response = await openai.createChatCompletion({
     model: "gpt-3.5-turbo",
     messages: [{role: "user", content: prompt}],
-    max_tokens: 50
+    max_tokens: 100
   });
 
   if (response.status !== 200) {
@@ -76,8 +76,8 @@ async function getAudio(text) {
   const headers = {
     'accept': 'text/event-stream',
     'content-type': 'application/json',
-    'AUTHORIZATION': `Bearer ${PLAYHT_SECRET_KEY}`,
-    'X-USER-ID': PLAYHT_USER_ID
+    'AUTHORIZATION': `Bearer ${APP_PLAYHT_SECRET_KEY}`,
+    'X-USER-ID': APP_PLAYHT_USER_ID
   }
   const response = await fetch('https://play.ht/api/v2/tts', {
     method: 'POST',
@@ -192,7 +192,7 @@ export default async function handler(req, res) {
     // console.log('videoFilePath', videoFilePath)
 
     const key = `voiceover/${path.basename(videoFilePath)}`; // update as needed
-    const uploadResult = await uploadToS3(AWS_BUCKET_NAME, key, videoFilePath);
+    const uploadResult = await uploadToS3(APP_AWS_BUCKET_NAME, key, videoFilePath);
     const s3Url = uploadResult.Location;
 
     return res.status(200).json({ url: s3Url });
