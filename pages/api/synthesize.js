@@ -1,6 +1,8 @@
 import ffmpeg from 'fluent-ffmpeg';
 import tempfile from 'tempfile';
 import { Configuration, OpenAIApi } from 'openai';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import fetch from 'node-fetch';
 import axios from 'axios';
 import path from 'path';
@@ -8,14 +10,26 @@ import os from 'os';
 import fs from 'fs';
 
 const { 
-  NEXT_PUBLIC_OPENAI_API_KEY,
-  NEXT_PUBLIC_PLAYHT_USER_ID,
-  NEXT_PUBLIC_PLAYHT_SECRET_KEY
+  OPENAI_API_KEY,
+  PLAYHT_USER_ID,
+  PLAYHT_SECRET_KEY,
+  AWS_REGION,
+  AWS_ACCESS_KEY,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_BUCKET_NAME,
 } = process.env
 
 const openai = new OpenAIApi(new Configuration({
-  apiKey: NEXT_PUBLIC_OPENAI_API_KEY,
+  apiKey: OPENAI_API_KEY,
 }));
+
+const s3Client = new S3Client({ 
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: AWS_ACCESS_KEY,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY
+  }
+});
 
 // Support for local (mac) & production (linux)
 let ffmpegPath;
@@ -34,7 +48,7 @@ async function getImagePrompt(text) {
   const response = await openai.createChatCompletion({
     model: "gpt-3.5-turbo",
     messages: [{role: "user", content: prompt}],
-    max_tokens: 100
+    max_tokens: 50
   });
 
   if (response.status !== 200) {
@@ -62,16 +76,15 @@ async function getAudio(text) {
   const headers = {
     'accept': 'text/event-stream',
     'content-type': 'application/json',
-    'AUTHORIZATION': `Bearer ${NEXT_PUBLIC_PLAYHT_SECRET_KEY}`,
-    'X-USER-ID': NEXT_PUBLIC_PLAYHT_USER_ID
+    'AUTHORIZATION': `Bearer ${PLAYHT_SECRET_KEY}`,
+    'X-USER-ID': PLAYHT_USER_ID
   }
   const response = await fetch('https://play.ht/api/v2/tts', {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      quality: 'medium',
+      quality: 'high',
       output_format: 'mp3',
-      speed: 1,
       sample_rate: 24000,
       text: text,
       voice: 'larry'
@@ -121,6 +134,20 @@ async function downloadFile(url) {
   });
 }
 
+async function uploadToS3(bucketName, key, filePath) {
+  const upload = new Upload({
+    client: s3Client,
+    params: {
+      Bucket: bucketName,
+      Key: key,
+      Body: fs.createReadStream(filePath),
+    },
+  });
+
+  const result = await upload.done();
+  return result;
+}
+
 async function processVideo(imagePath, audioPath) {
   const outputPath = tempfile({ extension: '.mp4' });
   const response = await new Promise((resolve, reject) => {
@@ -164,7 +191,11 @@ export default async function handler(req, res) {
     const videoFilePath = await processVideo(imageFilePath, audioFilePath);
     // console.log('videoFilePath', videoFilePath)
 
-    return res.status(200).json({ url: videoFilePath });
+    const key = `voiceover/${path.basename(videoFilePath)}`; // update as needed
+    const uploadResult = await uploadToS3(AWS_BUCKET_NAME, key, videoFilePath);
+    const s3Url = uploadResult.Location;
+
+    return res.status(200).json({ url: s3Url });
   } catch (err) {
     console.error(err)
     return res.status(500).json({ 'error': 'An error occurred. Please try again.' });
