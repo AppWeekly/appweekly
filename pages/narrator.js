@@ -6,11 +6,12 @@ import {
   Block,
   BlockTitle,
   BlockHeader,
+  Dialog,
+  DialogButton,
   List,
   ListInput,
   ListButton,
   Preloader,
-  f7,
   Button
 } from 'konsta/react';
 
@@ -18,6 +19,7 @@ export default function Narrator() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
+  const [alertOpened, setAlertOpened] = useState(false);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -32,7 +34,7 @@ export default function Narrator() {
       const data = await res.json();
       setVideoUrl(data.url);
     } catch (error) {
-      f7.dialog.alert('An error occurred. Try again.');
+      setAlertOpened(true);
     }
     setLoading(false);
   };
@@ -46,7 +48,6 @@ export default function Narrator() {
           <NavbarBackLink text="Back" onClick={() => history.back()} />
         }
       />
-
       <BlockTitle>AI-Narrated Videos</BlockTitle>
         <BlockHeader>
           Write a script and the AI narrator will create a voiceover video painting the story with a generated image.
@@ -73,6 +74,15 @@ export default function Narrator() {
             </a>
           </Block>
         )}
+      <Dialog
+        opened={alertOpened}
+        onBackdropClick={() => setAlertOpened(false)}
+        title="Narrator"
+        content="Oops, an error occurred. Try again."
+        buttons={
+          <DialogButton onClick={() => setAlertOpened(false)}>Ok</DialogButton>
+        }
+      />
     </Page>
   );
 }

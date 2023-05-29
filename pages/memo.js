@@ -6,11 +6,12 @@ import {
   Block,
   BlockTitle,
   BlockHeader,
+  Dialog,
+  DialogButton,
   List,
   ListInput,
   ListButton,
   Preloader,
-  f7,
   Button
 } from 'konsta/react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
@@ -19,6 +20,7 @@ export default function Memo() {
   const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [memo, setMemo] = useState(null);
+  const [alertOpened, setAlertOpened] = useState(false);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -27,7 +29,7 @@ export default function Memo() {
       const data = await res.json();
       setMemo(data.memo);
     } catch (error) {
-      f7.dialog.alert('An error occurred: ' + error.message);
+      setAlertOpened(true);
     }
     setLoading(false);
   };
@@ -67,6 +69,15 @@ export default function Memo() {
             </CopyToClipboard>
           </Block>
         )}
+      <Dialog
+        opened={alertOpened}
+        onBackdropClick={() => setAlertOpened(false)}
+        title="Memo"
+        content="Oops, an error occurred. Try again."
+        buttons={
+          <DialogButton onClick={() => setAlertOpened(false)}>Ok</DialogButton>
+        }
+      />
     </Page>
   );
 }
