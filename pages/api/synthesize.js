@@ -107,7 +107,38 @@ async function getAudio(text) {
   })
 }
 
+async function combineAudios(audioPaths, timestamps) {
+  const outputPath = tempfile({ extension: '.mp3' });
+
+  let ffmpegCmd = ffmpeg();
+
+  // Add a silence audio file for initial padding
+  ffmpegCmd.input('anullsrc')
+    .inputOptions(['-t', timestamps[0], '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2']);
+
+  audioPaths.forEach((path, index) => {
+    ffmpegCmd = ffmpegCmd.input(path);
+    if (index !== audioPaths.length - 1) {
+      const silenceDuration = timestamps[index + 1] - timestamps[index];
+      ffmpegCmd = ffmpegCmd.input('anullsrc')
+        .inputOptions(['-t', silenceDuration, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2']);
+    }
+  });
+
+  ffmpegCmd
+    .on('end', () => resolve(outputPath))
+    .on('error', err => reject(err))
+    .toFormat('mp3')
+    .save(outputPath);
+
+  return outputPath;
+}
+
 async function downloadFile(url) {
+  if (!url) {
+    throw new Error("URL is undefined");
+  }
+
   const response = await axios.get(url, {
     responseType: 'stream'
   });
@@ -178,26 +209,38 @@ export default async function handler(req, res) {
   }
 
   try {
-    const audioOutput = await getAudio(text);
-    // console.log('audioOutput', audioOutput)
-    const audioFilePath = await downloadFile(audioOutput.url);
-    // console.log('audioFilePath', audioFilePath)
-    const imagePrompt = await getImagePrompt(text);
-    // console.log('imagePrompt', imagePrompt)
-    const imageOutput = await getImage(imagePrompt);
-    // console.log('imageOutput', imageOutput)
-    const imageFilePath = await downloadFile(imageOutput.url);
-    // console.log('imageFilePath', imageFilePath)
-    const videoFilePath = await processVideo(imageFilePath, audioFilePath);
-    // console.log('videoFilePath', videoFilePath)
+    // Splitting text based on timestamps and extract those timestamps
+    const splitTexts = text.split(/\[(\d{2}:\d{2})\]/);
+    const paragraphs = splitTexts.filter((_, index) => index % 2 === 0).filter(paragraph => paragraph.trim() !== '');
+    const timestamps = splitTexts.filter((_, index) => index % 2 === 1)
+      .map(timestamp => {
+        const [minutes, seconds] = timestamp.split(':').map(Number);
+        return minutes * 60 + seconds; // Convert to seconds
+      });
 
-    const key = `voiceover/${path.basename(videoFilePath)}`; // update as needed
+    let audioFiles = [];
+    for (const paragraph of paragraphs) {
+      const audioOutput = await getAudio(paragraph);
+      console.log('getAudio',audioOutput )
+      const audioFilePath = await downloadFile(audioOutput.url);
+      audioFiles.push(audioFilePath);
+    }
+
+    // Combine the audio files based on timestamps
+    const combinedAudioPath = await combineAudios(audioFiles, timestamps);
+
+    const imagePrompt = await getImagePrompt(text);
+    const imageOutput = await getImage(imagePrompt);
+    const imageFilePath = await downloadFile(imageOutput.url);
+    const videoFilePath = await processVideo(imageFilePath, combinedAudioPath);
+
+    const key = `voiceover/${path.basename(videoFilePath)}`;
     const uploadResult = await uploadToS3(APP_AWS_BUCKET_NAME, key, videoFilePath);
     const s3Url = uploadResult.Location;
 
     return res.status(200).json({ url: s3Url });
   } catch (err) {
-    console.error(err)
+    console.error(err);
     return res.status(500).json({ 'error': 'An error occurred. Please try again.' });
   }
 }

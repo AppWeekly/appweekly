@@ -53,7 +53,7 @@ export default function Narrator() {
           Write a script and the AI narrator will create a voiceover video painting the story with a generated image.
         </BlockHeader>
         <List strong inset>
-          <ListInput 
+          <ListInput
             label="Text (500 characters)" 
             type="textarea" 
             placeholder="Your text for narrator.." 
@@ -61,6 +61,7 @@ export default function Narrator() {
             value={text} 
             onInput={(e) => setText(e.target.value)}
             maxLength="500"
+            required={true}
           />
           <ListButton onClick={handleGenerate}>
             {loading ? <Preloader /> : 'Generate'}

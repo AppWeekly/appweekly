@@ -49,7 +49,7 @@ export default function Memo() {
         Tired of manually summarizing your lengthy meetings? Simply provide the URL of your recorded video meeting, and AI will generate a comprehensive summary for you. Not just that, the AI extracts key points, conclusions, decisions, and even offers suggestions for improving your future meetings. Once the memo is generated, you can easily copy it to your clipboard with a single click.
         </BlockHeader>
         <List strong inset>
-          <ListInput 
+          <ListInput required
             label="Video URL" 
             type="url" 
             placeholder="URL" 
