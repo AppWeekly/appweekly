@@ -72,9 +72,23 @@ async function getImage(prompt) {
   return response.data.data[0];
 }
 
-async function getAudio(text) {
+async function getAudio(paragraph) {
+  // Start the audio generation process...
+  let response = await startAudioGeneration(paragraph);
+
+  // Poll until the audio is fully processed
+  while (!response.output) {
+    // Wait for a short duration before checking again to avoid spamming the API
+    await new Promise(resolve => setTimeout(resolve, 500));
+    response = await checkAudioStatus(response.id);
+  }
+
+  return response.output;
+}
+
+async function startAudioGeneration(text) {
   const headers = {
-    'accept': 'text/event-stream',
+    'accept': 'application/json',
     'content-type': 'application/json',
     'AUTHORIZATION': `Bearer ${APP_PLAYHT_SECRET_KEY}`,
     'X-USER-ID': APP_PLAYHT_USER_ID
@@ -91,52 +105,68 @@ async function getAudio(text) {
     })
   });
 
-  return new Promise((resolve, reject) => {
-    response.body.on('error', reject);
-    response.body.on('data', async (data) => {
-      const strData = data.toString('utf8');
-      try {
-        if (strData.indexOf('event: completed') > -1) {
-          const jsonMatch = strData.match(/{.*}/);
-          resolve(JSON.parse(jsonMatch[0]));
-        }
-      } catch (err) {
-        reject(err)
-      }
-    })
-  })
+  const data = await response.json();
+  return data;
 }
 
-async function combineAudios(audioPaths, timestamps) {
+async function checkAudioStatus(id) {
+  const response = await fetch(`https://play.ht/api/v2/tts/${id}`, { headers: {
+    'accept': 'application/json',
+    'content-type': 'application/json',
+    'AUTHORIZATION': `Bearer ${APP_PLAYHT_SECRET_KEY}`,
+    'X-USER-ID': APP_PLAYHT_USER_ID
+  }});
+  const data = await response.json();
+  return data;
+}
+
+async function combineAudios(audios, timestamps) {
   const outputPath = tempfile({ extension: '.mp3' });
 
-  let ffmpegCmd = ffmpeg();
+  return new Promise((resolve, reject) => {
+    let ffmpegCmd = ffmpeg();
 
-  // Add a silence audio file for initial padding
-  ffmpegCmd.input('anullsrc')
-    .inputOptions(['-t', timestamps[0], '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2']);
+    const filters = [];
+    const inputs = [];
 
-  audioPaths.forEach((path, index) => {
-    ffmpegCmd = ffmpegCmd.input(path);
-    if (index !== audioPaths.length - 1) {
-      const silenceDuration = timestamps[index + 1] - timestamps[index];
-      ffmpegCmd = ffmpegCmd.input('anullsrc')
-        .inputOptions(['-t', silenceDuration, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2']);
-    }
+    // Initial padding silence
+    ffmpegCmd.input('anullsrc=channel_layout=stereo:sample_rate=44100')
+      .inputOptions(['-f', 'lavfi', '-t', timestamps[0]]);
+    inputs.push('[0:a]');
+
+    audios.forEach((audio, index) => {
+      if (index > 0) {
+        const previousDuration = timestamps[index - 1] + audios[index - 1].duration
+        const silenceDuration = timestamps[index] - previousDuration;
+        ffmpegCmd = ffmpegCmd.input('anullsrc=channel_layout=stereo:sample_rate=44100')
+          .inputOptions(['-f', 'lavfi', '-t', silenceDuration]);
+        inputs.push(`[${inputs.length}:a]`);
+
+      }
+      ffmpegCmd = ffmpegCmd.input(audio.filePath);
+      inputs.push(`[${inputs.length}:a]`);
+    });
+
+    const concatenated = inputs.join('');
+    filters.push(`${concatenated}concat=n=${inputs.length}:v=0:a=1[outa]`);
+
+    ffmpegCmd
+      .complexFilter(filters, ['outa'])
+      .on('end', () => resolve(outputPath))
+      .on('error', (err, stdout, stderr) => {
+        console.error('Error:', err);
+        console.error('ffmpeg stdout:', stdout);
+        console.error('ffmpeg stderr:', stderr);
+        reject(err);
+      })
+      .toFormat('mp3')
+      .save(outputPath);
   });
-
-  ffmpegCmd
-    .on('end', () => resolve(outputPath))
-    .on('error', err => reject(err))
-    .toFormat('mp3')
-    .save(outputPath);
-
-  return outputPath;
 }
 
 async function downloadFile(url) {
   if (!url) {
-    throw new Error("URL is undefined");
+    throw new Error('URL is undefined');
   }
 
   const response = await axios.get(url, {
@@ -218,16 +248,16 @@ export default async function handler(req, res) {
         return minutes * 60 + seconds; // Convert to seconds
       });
 
-    let audioFiles = [];
+    let audioOutputs = [];
     for (const paragraph of paragraphs) {
       const audioOutput = await getAudio(paragraph);
-      console.log('getAudio',audioOutput )
-      const audioFilePath = await downloadFile(audioOutput.url);
-      audioFiles.push(audioFilePath);
+      // add filePath property to the returned audioOutput
+      audioOutput.filePath = await downloadFile(audioOutput.url);
+      audioOutputs.push(audioOutput);
     }
 
     // Combine the audio files based on timestamps
-    const combinedAudioPath = await combineAudios(audioFiles, timestamps);
+    const combinedAudioPath = await combineAudios(audioOutputs, timestamps);
 
     const imagePrompt = await getImagePrompt(text);
     const imageOutput = await getImage(imagePrompt);
